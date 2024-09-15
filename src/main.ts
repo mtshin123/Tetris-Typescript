@@ -72,6 +72,8 @@ export function main() {
 
   
 
+  const actionReveal = fromEvent<KeyboardEvent>(document, 'keydown')
+  console.log(actionReveal.subscribe((s: KeyboardEvent) => console.log(s)));
 
   /**
    * Observable streams that listen to hold actions, such as A, S, D translation.
