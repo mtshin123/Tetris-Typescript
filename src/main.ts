@@ -1,9 +1,9 @@
-import { State, Action } from "./types";
+import { State, Action, Key } from "./types";
 import { updateView } from "./view"
 import { Viewport, initialState, Constants } from "./constants"
 import { Tick, Translate, Rotate, DropDown, Restart, reduceState } from "./state"
 import { distinctUntilChanged, mergeMap, takeUntil, switchMap } from "rxjs/operators";
-import { Subject } from 'rxjs'
+import { from, of, Subject } from 'rxjs'
 import "./style.css";
 import { Observable, fromEvent, interval, merge } from "rxjs";
 import { map, filter, scan } from "rxjs/operators";
@@ -72,8 +72,12 @@ export function main() {
 
   
 
-  const actionReveal = fromEvent<KeyboardEvent>(document, 'keydown')
-  console.log(actionReveal.subscribe((s: KeyboardEvent) => console.log(s)));
+  /** 
+   * Testing observables;
+   */
+
+  const actionReveal$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keydown')
+  actionReveal$.subscribe((d: KeyboardEvent) => console.log(d.code))
 
   /**
    * Observable streams that listen to hold actions, such as A, S, D translation.
@@ -82,11 +86,25 @@ export function main() {
    * their respective class actions.
    */
 
+  /*
+  const letters = of('a', 'b','c');
+  const result = letters.pipe(
+    mergeMap(x => interval(1000).pipe(map(i => x + i)))
+  );
+  result.subscribe(x => console.log(x));
+  */
+  const KeyUpActions: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keyup').pipe(
+    filter((d:KeyboardEvent) => keysHold(d.code))
+  )
 
-  const holdAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
+  const KeyDownAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown').pipe(
+    filter((d: KeyboardEvent) => keysHold(d.code)),
+    mergeMap((d: KeyboardEvent) => interval(100).pipe(takeUntil)),
+    map((d: KeyboardEvent) => keysMapTo(d.code))
+  )
+  /**const holdAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
     .pipe(
-      filter(({ key }) => keysHold(key)),
-      filter(({ repeat }) => !repeat),
+      filter(({ key, repeat }) => keysHold(key) && !repeat),
       mergeMap((d) =>
         interval(100).pipe(
           takeUntil(
@@ -96,14 +114,15 @@ export function main() {
           ),
           map((_) => d)
         )
-      ), map(({ code }) => keysMapTo(code))),
+      ), map(({ code }) => keysMapTo(code)))
+      */
 
     /**
      * Observable stream that listen to tap actions, such as restart, rotate and dropdown.
      * The repeats are filtered out so multiple instances are not fired as key is held down.
      * Then maps their class actions onto the stream.
      */
-    tapAction$ = fromEvent<KeyboardEvent>(document, 'keydown')
+    const tapAction$ = fromEvent<KeyboardEvent>(document, 'keydown')
       .pipe(
         filter(({ key }) => keysHold(key) || keysTap(key)),
         filter(({ repeat }) => !repeat),
@@ -132,7 +151,7 @@ export function main() {
    * We scan the states and apply the function reduceState to apply the actions on the state.
    * This is an observable stream of states of the game.
    */
-  const action$ = merge(tapAction$, holdAction$),
+  const action$ = merge(tapAction$, KeyAction$),
 
     state$: Observable<State> = merge(action$, gameTickWithLevel$).pipe(scan(reduceState, initialState)),
 
