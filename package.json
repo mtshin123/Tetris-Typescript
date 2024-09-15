@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@vitest/ui": "^0.34.1",
-    "typescript": "^5.1.6",
+    "typescript": "^5.6.2",
     "vite": "^4.2.0",
     "vitest": "^0.34.1"
   },

@@ -70,6 +70,10 @@ export function main() {
     }
   }
 
+  
+
+  const actionReveal = fromEvent<KeyboardEvent>(document, 'keydown')
+  console.log(actionReveal.subscribe((s: KeyboardEvent) => console.log(s)));
 
   /**
    * Observable streams that listen to hold actions, such as A, S, D translation.
@@ -77,6 +81,8 @@ export function main() {
    * an interval tick until the key button is released. Then filters out the key and applies
    * their respective class actions.
    */
+
+
   const holdAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
     .pipe(
       filter(({ key }) => keysHold(key)),
