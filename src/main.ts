@@ -2,7 +2,7 @@ import { State, Action, Key } from "./types";
 import { updateView } from "./view"
 import { Viewport, initialState, Constants } from "./constants"
 import { Tick, Translate, Rotate, DropDown, Restart, reduceState } from "./state"
-import { distinctUntilChanged, mergeMap, takeUntil, switchMap, take } from "rxjs/operators";
+import { distinctUntilChanged, mergeMap, takeUntil, switchMap, take, concatMap } from "rxjs/operators";
 import { from, of, Subject, timer } from 'rxjs'
 import "./style.css";
 import { Observable, fromEvent, interval, merge } from "rxjs";
@@ -27,13 +27,12 @@ export function main() {
   preview.setAttribute("height", `${Viewport.PREVIEW_HEIGHT}`);
   preview.setAttribute("width", `${Viewport.PREVIEW_WIDTH}`);
 
-
-
+  
   // Functions that return boolean values when a certain key is pressed by the user
   const keysHold = (key: String): boolean =>
-    key === 'a' || key === "d" || key === "s"
+    key === 'ArrowLeft' || key === "ArrowRight" || key === "ArrowDown" || key === "ArrowUp"
 
-  const keysTap = (key: String): boolean => key === 'r' || key === 'm' || key === 't'
+  const keysTap = (key: String): boolean => key === 'ArrowUp' || key === 'Space' || key === 'KeyR'
 
 
 
@@ -46,22 +45,22 @@ export function main() {
    */
   const keysMapTo = (key: string): Translate | DropDown | Rotate | Restart => {
     switch (key) {
-      case 'KeyA': {
+      case 'ArrowLeft': {
         return new Translate(-1, 0)
       }
-      case 'KeyD': {
+      case 'ArrowRight': {
         return new Translate(1, 0)
       }
-      case 'KeyS': {
+      case 'ArrowDown': {
         return new Translate(0, 1)
       }
-      case 'KeyM': {
+      case 'Space': {
         return new DropDown()
       }
-      case 'KeyR': {
+      case 'ArrowUp': {
         return new Rotate()
       }
-      case 'KeyT': {
+      case 'KeyR': {
         return new Restart()
       }
       default: {
@@ -76,9 +75,10 @@ export function main() {
    * Testing observables;
    */
 
-  const actionReveal$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keydown')
-  actionReveal$.subscribe((d: KeyboardEvent) => console.log(d.code))
+  //const actionReveal$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keydown')
+  //actionReveal$.subscribe((d: KeyboardEvent) => console.log("Code is " + d.code, "Key is " + d.key))
 
+ 
   /**
    * Observable streams that listen to hold actions, such as A, S, D translation.
    * mergemap is used for smooth handling, multiple actions can be handled by listening to 
@@ -97,35 +97,34 @@ export function main() {
   
 
   const KeyUpActions: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keyup');
-
-  const KeyDownAction2$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keydown').pipe(
-    filter((downEvent: KeyboardEvent) => keysHold(downEvent.code))
-  )
-  const KeyDownAction1$: Observable<KeyboardEvent> = fromEvent<KeyboardEvent>(document, 'keydown').pipe(
-    filter((d: KeyboardEvent) => keysHold(d.code)),
-  )
-
-
+  //KeyUpActions.subscribe((d: KeyboardEvent) => console.log("Code is " + d.code, "Key is " + d.key))
 
 
   const keyDownAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
   .pipe(
-    filter(({key, repeat}) => keysHold(key) && !repeat),
-    mergeMap((downEvent: KeyboardEvent) => interval(100).pipe(takeUntil(fromEvent<KeyboardEvent>(document, 'keyup').pipe(filter(({key}) => key == downEvent.key))),
+    filter(({code, repeat}) => keysHold(code) && !repeat),
+    mergeMap((downEvent: KeyboardEvent) => interval(100).pipe(takeUntil(KeyUpActions.pipe(filter((upEvent: KeyboardEvent) => upEvent.code == downEvent.code))),
     map((_) => downEvent))),
 
     map(({code}) => keysMapTo(code)))
 
-   
-  const holdAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
-    .pipe(
-      filter(({ key, repeat }) => keysHold(key) && !repeat),
-      mergeMap((d) => interval(100).pipe(takeUntil(fromEvent<KeyboardEvent>(document, 'keyup').pipe(filter(({ key }) => key === d.key))),
-      map((_) => d))),
-      
-      map(({ code }) => keysMapTo(code)))
+    
 
+      const translationActions$$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
+      .pipe(
+        filter(({code, repeat}) => keysHold(code) && !repeat),
+        mergeMap((downEvent: KeyboardEvent) => interval(100).pipe(takeUntil(KeyUpActions.pipe(filter((upEvent: KeyboardEvent) => upEvent.code == downEvent.code))),
+        map((_) => downEvent))),
+    
+        map(({code}) => keysMapTo(code)))
+
+        const rotationActions$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
+        .pipe(
+          filter(({code, repeat}) => code == "ArrowUp" && !repeat),
+          mergeMap((downEvent: KeyboardEvent) => interval(100).pipe(takeUntil(KeyUpActions.pipe(filter((upEvent: KeyboardEvent) => upEvent.code == downEvent.code))),
+          map((_) => downEvent))),
       
+          map(({code}) => keysMapTo(code)))
   
   
     /**
@@ -135,7 +134,7 @@ export function main() {
      */
     const tapAction$ = fromEvent<KeyboardEvent>(document, 'keydown')
       .pipe(
-        filter(({ key }) => keysHold(key) || keysTap(key)),
+        filter(({ code }) => keysHold(code) || keysTap(code)),
         filter(({ repeat }) => !repeat),
         map(({ code }) => keysMapTo(code))),
 
