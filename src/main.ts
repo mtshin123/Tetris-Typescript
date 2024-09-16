@@ -100,6 +100,8 @@ export function main() {
   //KeyUpActions.subscribe((d: KeyboardEvent) => console.log("Code is " + d.code, "Key is " + d.key))
 
 
+
+  /*
   const keyDownAction$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
   .pipe(
     filter(({code, repeat}) => keysHold(code) && !repeat),
@@ -107,7 +109,7 @@ export function main() {
     map((_) => downEvent))),
 
     map(({code}) => keysMapTo(code)))
-
+*/
     
 
       const translationActions$$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
@@ -121,22 +123,18 @@ export function main() {
         const rotationActions$: Observable<Action> = fromEvent<KeyboardEvent>(document, 'keydown')
         .pipe(
           filter(({code, repeat}) => code == "ArrowUp" && !repeat),
-          mergeMap((downEvent: KeyboardEvent) => interval(100).pipe(takeUntil(KeyUpActions.pipe(filter((upEvent: KeyboardEvent) => upEvent.code == downEvent.code))),
+          mergeMap((downEvent: KeyboardEvent) => interval(300).pipe(takeUntil(KeyUpActions.pipe(filter((upEvent: KeyboardEvent) => upEvent.code == downEvent.code))),
           map((_) => downEvent))),
       
-          map(({code}) => keysMapTo(code)))
+          map(() => new Rotate()))
+
+          const tapAction$ = fromEvent<KeyboardEvent>(document, 'keydown')
+          .pipe(
+            filter(({ code }) => keysHold(code) || keysTap(code)),
+            filter(({ repeat }) => !repeat),
+            map(({ code }) => keysMapTo(code)))
   
-  
-    /**
-     * Observable stream that listen to tap actions, such as restart, rotate and dropdown.
-     * The repeats are filtered out so multiple instances are not fired as key is held down.
-     * Then maps their class actions onto the stream.
-     */
-    const tapAction$ = fromEvent<KeyboardEvent>(document, 'keydown')
-      .pipe(
-        filter(({ code }) => keysHold(code) || keysTap(code)),
-        filter(({ repeat }) => !repeat),
-        map(({ code }) => keysMapTo(code))),
+    const keyDownAction$: Observable<Action> = merge(translationActions$$, rotationActions$),
 
 
     /**
